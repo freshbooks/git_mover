@@ -28,17 +28,17 @@ $ python git-mover.py
 ### Example
 ##### Move GHE repository dev/gcp to github.com with milestones, labels, and issues (when repository freshbooks/gcp doesn't exist on target github)
 ```bash
-$ git-mover.py dev/gcp freshbooks/gcp -r --sun <source github username> --st <source github auth token> -dun <destination github username> --dt <desitination github auth token>
+$ git-mover.py dev/gcp freshbooks/gcp -r -dun <destination github username> --dt <desitination github auth token>
 ```
 
 ##### Move GHE repository dev/gcp to github.com with milestones, labels, and issues (when empty repository freshbooks/gcp exist)
 ```bash
-$ git-mover.py dev/gcp freshbooks/gcp -c -gd --sun <source github username> --st <source github auth token> -dun <destination github username> --dt <desitination github auth token>
+$ git-mover.py dev/gcp freshbooks/gcp -c -gd -dun <destination github username> --dt <desitination github auth token>
 ```
 
 ##### Move GHE repository dev/gcp to github.com repository only (commits/branches/tags) when repository freshbooks/gcp exists
 ```bash
-$ git-mover.py dev/gcp freshbooks/gcp -c --sun <source github username> --st <source github auth token> -dun <destination github username> --dt <desitination github auth token>
+$ git-mover.py dev/gcp freshbooks/gcp -c -dun <destination github username> --dt <desitination github auth token>
 ```
 
 ##### Move GHE repository dev/gcp to github.com repository only (commits/branches/tags) with SSH connection when repository freshbooks/gcp exists

@@ -24,7 +24,10 @@ INPUT: an API endpoint for retrieving data
 OUTPUT: the request object containing the retrieved data for successful requests. If a request fails, False is returnedself.
 '''
 def get_req(url, credentials):
-	r = requests.get(url=url, auth=(credentials['user_name'], credentials['token']), headers={'Content-type': 'application/json'})
+	if not credentials['user_name'] and credentials['token']:
+		r = requests.get(url=url, auth=(credentials['user_name'], credentials['token']), headers={'Content-type': 'application/json'})
+	else :
+		r = requests.get(url=url, headers={'Content-type': 'application/json'})
 	return r
 
 '''
@@ -110,14 +113,14 @@ def create_repository(repo, destination_url, destination, credentials, inheritVi
 	repository = {"name": destinations[1], "description": repo['description'], 'homepage': repo['homepage'], 'private': privateRepo, 'has_projects': repo['has_projects'], 'auto_init': False}
 	print 'create_repository:' + url
 	print 'create_repository: json = ' + json.dumps(repository)
-	# r = post_req(url, json.dumps(repository), credentials)
-	# status = check_res(r)
-	# if status:
-	# 	#if the POST request succeeded, parse and store the new milestone returned from GitHub
-	# 	return json.loads(r.text)
-	# else:
-	# 	print status
-	# return {}
+	r = post_req(url, json.dumps(repository), credentials)
+	status = check_res(r)
+	if status:
+		#if the POST request succeeded, parse and store the new milestone returned from GitHub
+		return json.loads(r.text)
+	else:
+		print status
+	return {}
 
 '''
 INPUT:
@@ -167,15 +170,15 @@ def create_milestones(milestones, destination_url, destination, credentials):
 		milestone_prime = {"title": milestone["title"], "state": milestone["state"], "description": milestone["description"], "due_on": milestone["due_on"]}
 		print 'Create Milestones: ' + url
 		print 'Create Milestones: json ' + json.dumps(milestone_prime)
-		# r = post_req(url, json.dumps(milestone_prime), credentials)
-		# status = check_res(r)
-		# if status:
-		# 	#if the POST request succeeded, parse and store the new milestone returned from GitHub
-		# 	returned_milestone = json.loads(r.text)
-		# 	#map the original source milestone's number to the newly created milestone's number
-		# 	milestone_map[milestone['number']] = returned_milestone['number']
-		# else:
-		# 	print status
+		r = post_req(url, json.dumps(milestone_prime), credentials)
+		status = check_res(r)
+		if status:
+			#if the POST request succeeded, parse and store the new milestone returned from GitHub
+			returned_milestone = json.loads(r.text)
+			#map the original source milestone's number to the newly created milestone's number
+			milestone_map[milestone['number']] = returned_milestone['number']
+		else:
+			print status
 	return milestone_map
 
 '''
@@ -200,8 +203,8 @@ def create_labels(labels, destination_url, destination, credentials):
 			label_prime = {"name": label["name"], "color": label["color"]}
 			print 'Create labels: ' + url
 			print 'Create labels: json ' + json.dumps(label_prime)
-			# r = post_req(url, json.dumps(label_prime), credentials)
-			# status = check_res(r)
+			r = post_req(url, json.dumps(label_prime), credentials)
+			status = check_res(r)
 
 '''
 INPUT:
@@ -232,17 +235,17 @@ def create_issues(issues, destination_url, destination, milestones, labels, mile
 			issue_prime["labels"] = issue["labels"]
 		print 'Create issue: ' + url
 		print 'Create issue: json ' + json.dumps(issue_prime)
-		# r = post_req(url, json.dumps(issue_prime), credentials)
-		# status = check_res(r)
-		# #if adding the issue failed
-		# if not status:
-		# 	#get the message from the response
-		# 	message = json.loads(r.text)
-		# 	#if the error message is for an invalid entry because of the assignee field, remove it and repost with no assignee
-		# 	if message['errors'][0]['code'] == 'invalid' and message['errors'][0]['field'] == 'assignee':
-		# 		sys.stderr.write("WARNING: Assignee "+message['errors'][0]['value']+" on issue \""+issue_prime['title']+"\" does not exist in the destination repository. Issue added without assignee field.\n\n")
-		# 		issue_prime.pop('assignee')
-		# 		post_req(url, json.dumps(issue_prime), credentials)
+		r = post_req(url, json.dumps(issue_prime), credentials)
+		status = check_res(r)
+		#if adding the issue failed
+		if not status:
+			#get the message from the response
+			message = json.loads(r.text)
+			#if the error message is for an invalid entry because of the assignee field, remove it and repost with no assignee
+			if message['errors'][0]['code'] == 'invalid' and message['errors'][0]['field'] == 'assignee':
+				sys.stderr.write("WARNING: Assignee "+message['errors'][0]['value']+" on issue \""+issue_prime['title']+"\" does not exist in the destination repository. Issue added without assignee field.\n\n")
+				issue_prime.pop('assignee')
+				post_req(url, json.dumps(issue_prime), credentials)
 
 
 def main():
@@ -288,11 +291,11 @@ def main():
 		sys.stderr.write('GitHub action option is not specified. Either --repo, --clone, --githubData option is required.\n')
 		quit()
 
-	if (args.repo or args.githubData) and not (args.sourceUserName and args.sourceToken and args.destinationUserName and args.destinationToken):
+	if (args.repo or args.githubData) and not (args.destinationUserName and args.destinationToken):
 		sys.stderr.write('GitHub source and destination user name and token are required.\n')
 		quit()
 
-	if args.clone and not args.ssh and not (args.sourceUserName and args.sourceToken and args.destinationUserName and args.destinationToken):
+	if args.clone and not args.ssh and not (args.destinationUserName and args.destinationToken):
 		sys.stderr.write('GitHub source and destination user name and token are required.\n')
 		quit()
 
@@ -306,7 +309,6 @@ def main():
 
 	source_credentials = {'user_name': args.sourceUserName, 'token': args.sourceToken}
 	destination_credentials = {'user_name': args.destinationUserName, 'token': args.destinationToken}
-
 
 	if args.repo:
 		repo = download_repository(source_root, source_repo, source_credentials)
