@@ -136,7 +136,10 @@ def clone_repository(source_root, source_repo, source_credentials, destination_r
 	source_host = 'github.com' if source.netloc.lower() == github_api_host else source.netloc[::-1].replace(ghe_api_path[::-1], '' , 1)[::-1]
 	sourceUrl = ('git@'+source_host+source.path.replace(ghe_api_path, '', 1))[:-1]+':'+source_repo+'.git'
 	if not ssh:
-		sourceUrl = source.scheme+'://'+source_credentials['user_name']+':'+source_credentials['token']+'@'+source_host+source.path.replace(ghe_api_path, '', 1)+source_repo+'.git'
+		if not source_credentials['user_name'] or not source_credentials['token']:
+			sourceUrl = source.scheme+'://'+source_host+source.path.replace(ghe_api_path, '', 1)+source_repo+'.git'
+		else:
+			sourceUrl = source.scheme+'://'+source_credentials['user_name']+':'+source_credentials['token']+'@'+source_host+source.path.replace(ghe_api_path, '', 1)+source_repo+'.git'
 
 	destination = urlparse(destination_root)
 	destination_host = 'github.com' if destination.netloc.lower() == github_api_host else destination.netloc[::-1].replace(ghe_api_path[::-1], '' , 1)[::-1]
@@ -194,8 +197,9 @@ def create_labels(labels, destination_url, destination, credentials):
 	#download labels from the destination and pass them into dictionary of label names
 	check_labels = download_labels(destination_url, destination, credentials)
 	existing_labels = {}
-	for existing_label in check_labels:
-		existing_labels[existing_label["name"]] = existing_label
+	if check_labels:
+		for existing_label in check_labels:
+			existing_labels[existing_label["name"]] = existing_label
 	for label in labels:
 		#for every label that was downloaded from the source, check if it already exists in the source.
 		#If it does, don't add it.
