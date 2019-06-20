@@ -197,8 +197,9 @@ def create_labels(labels, destination_url, destination, credentials):
 	#download labels from the destination and pass them into dictionary of label names
 	check_labels = download_labels(destination_url, destination, credentials)
 	existing_labels = {}
-	for existing_label in check_labels:
-		existing_labels[existing_label["name"]] = existing_label
+	if check_Labels:
+		for existing_label in check_labels:
+			existing_labels[existing_label["name"]] = existing_label
 	for label in labels:
 		#for every label that was downloaded from the source, check if it already exists in the source.
 		#If it does, don't add it.
