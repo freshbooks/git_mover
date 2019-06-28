@@ -25,20 +25,34 @@ $ python git-mover.py
               source_repo destination_repo
 ```
 
+
+
+### Example
+##### Move GHE repository dev/gcp, and dev/network-service to github.com with milestones, labels, and issues (when repository freshbooks/gcp, freshbooks/network-service doesn't exist on target github)
+```bash
+$ git-mover.py gcp,networkservice gcp,networkservice -r -dun <destination github username> -dt <desitination github auth token> -so dev -do freshbooks
+```
+
+Or use dot (.) as destination repository.
+
+```bash
+$ git-mover.py gcp,networkservice . -r -dun <destination github username> -dt <desitination github auth token> -so dev -do freshbooks
+```
+
 ### Example
 ##### Move GHE repository dev/gcp to github.com with milestones, labels, and issues (when repository freshbooks/gcp doesn't exist on target github)
 ```bash
-$ git-mover.py dev/gcp freshbooks/gcp -r -dun <destination github username> --dt <desitination github auth token>
+$ git-mover.py dev/gcp freshbooks/gcp -r -dun <destination github username> -dt <desitination github auth token>
 ```
 
 ##### Move GHE repository dev/gcp to github.com with milestones, labels, and issues (when empty repository freshbooks/gcp exist)
 ```bash
-$ git-mover.py dev/gcp freshbooks/gcp -c -gd -dun <destination github username> --dt <desitination github auth token>
+$ git-mover.py dev/gcp freshbooks/gcp -c -gd -dun <destination github username> -dt <desitination github auth token>
 ```
 
 ##### Move GHE repository dev/gcp to github.com repository only (commits/branches/tags) when repository freshbooks/gcp exists
 ```bash
-$ git-mover.py dev/gcp freshbooks/gcp -c -dun <destination github username> --dt <desitination github auth token>
+$ git-mover.py dev/gcp freshbooks/gcp -c -dun <destination github username> -dt <desitination github auth token>
 ```
 
 ##### Move GHE repository dev/gcp to github.com repository only (commits/branches/tags) with SSH connection when repository freshbooks/gcp exists
@@ -49,9 +63,23 @@ $ git-mover.py dev/gcp freshbooks/gcp -c -s
 For authentication, GitMover uses a personal access token, which can be generated in your GitHub Profile settings.
 
 ### Positional Arguments
+#### Without Source Owner/Destination Owner options
   `source_repo`: the team and repo to migrate from: `<team_name>/<repo_name>`
   
   `destination_repo`: the team and repo to migrate to: `<team_name>/<repo_name>`
+  When the value of `destination_repo` is `dot (.)`, the same value of `source_repo` will be assigned as `destination_repo`
+
+#### With Source Owner/Destination Owner options
+  `source_repo`: the name of repository to migrate from: `<repo_name>`
+  
+  `destination_repo`: the name of repository to migrate to: `<repo_name>`
+  When the value of `destination_repo` is `dot (.)`, the same value of `source_repo` will be assigned as `destination_repo`
+
+#### Migrate multiple repositories
+  `source_repo`,`destination_repo`: the name of repositories (comma separated): `<repo_name1>,<reponame2>`
+  When the value of `destination_repo` is `dot (.)`, the same value of `source_repo` will be assigned as `destination_repo`
+
+  And use `--sourceOwner` and `--destinationOwner` options to define source and destination organization
   
 ### Optional Arguments
 

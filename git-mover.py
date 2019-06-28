@@ -220,7 +220,7 @@ INPUT:
 OUTCOME: Post issues to GitHub
 OUTPUT: Null
 '''
-def create_issues(issues, destination_url, destination, milestones, labels, milestone_map, credentials, sameInstall):
+def create_issues(issues, destination_url, destination, milestone_map, credentials, sameInstall):
 	url = destination_url+"repos/"+destination+"/issues"
 	for issue in issues:
 		#create a new issue object containing only the data necessary for the creation of a new issue
@@ -229,13 +229,13 @@ def create_issues(issues, destination_url, destination, milestones, labels, mile
 			assignee = issue["assignee"]["login"]
 		issue_prime = {"title" : issue["title"], "body" : issue["body"], "assignee": assignee, "state" : issue["state"]}
 		#if milestones were migrated and the issue to be posted contains milestones
-		if milestones and "milestone" in issue and issue["milestone"]!= None:
+		if "milestone" in issue and issue["milestone"]!= None:
 			#if the milestone associated with the issue is in the milestone map
 			if issue['milestone']['number'] in milestone_map:
 				#set the milestone value of the new issue to the updated number of the migrated milestone
 				issue_prime["milestone"] = milestone_map[issue["milestone"]["number"]]
 		#if labels were migrated and the issue to be migrated contains labels
-		if labels and "labels" in issue:
+		if "labels" in issue:
 			issue_prime["labels"] = issue["labels"]
 		print 'Create issue: ' + url
 		print 'Create issue: json ' + json.dumps(issue_prime)
@@ -271,14 +271,22 @@ def main():
 	parser.add_argument('--destinationHost', '-dh', nargs='?', default=github_url, type=str, action='store', dest='destinationHost', help='The GitHub domain to migrate to. Defaults is '+github_url+'.')
 	
 	parser.add_argument('--inheritVisibility', '-v', action="store_true", help='Inherit visibility (public/private repository) of source repository. By default -r option creates private repository. It works only with -r option.')
-	
+
+	parser.add_argument('--sourceOwner', '-so', nargs='?', default='', type=str, action='store', dest='sourceOwner', help='The GitHub host to migrate from. Default is '+ghe_url+'.')
+	parser.add_argument('--destinationOwner', '-do', nargs='?', default='freshbooks', type=str, action='store', dest='destinationOwner', help='The GitHub host to migrate from. Default is freshbooks.')
+
+	parser.add_argument('--jenkinsHost', '-j', nargs='?', default='', type=str, action='store', dest='jenkinsHost', help='Host of Jenkins to update build job')
 
 
 	args = parser.parse_args()
 
-	destination_repo = args.destination_repo
-	source_repo = args.source_repo
-	
+	if (args.destination_repo == '.'):
+		destination_repository = args.source_repo
+	else:
+		destination_repository = args.destination_repo
+
+	source_repository = args.source_repo
+
 	if (args.sourceHost == github_url):
 		args.sourceHost = github_api_url
 
@@ -293,15 +301,15 @@ def main():
 
 	if not args.repo and not args.clone and not args.githubData:
 		sys.stderr.write('GitHub action option is not specified. Either --repo, --clone, --githubData option is required.\n')
-		quit()
+		exit(1)
 
 	if (args.repo or args.githubData) and not (args.destinationUserName and args.destinationToken):
 		sys.stderr.write('GitHub source and destination user name and token are required.\n')
-		quit()
+		exit(1)
 
 	if args.clone and not args.ssh and not (args.destinationUserName and args.destinationToken):
 		sys.stderr.write('GitHub source and destination user name and token are required.\n')
-		quit()
+		exit(1)
 
 	source_root = args.sourceHost
 	if not source_root.endswith('/'):
@@ -314,54 +322,68 @@ def main():
 	source_credentials = {'user_name': args.sourceUserName, 'token': args.sourceToken}
 	destination_credentials = {'user_name': args.destinationUserName, 'token': args.destinationToken}
 
-	if args.repo:
-		repo = download_repository(source_root, source_repo, source_credentials)
-		args.clone = True
-		args.githubData = True
-		if repo:
-			res = create_repository(repo, destination_root, destination_repo, destination_credentials, args.inheritVisibility)
-		else:
-			sys.stderr.write('ERROR: The source repository failed to be retrieved. Exiting...')
-			quit()
+	source_repos = [x.strip() for x in source_repository.split(',')]
+	destination_repos = [x.strip() for x in destination_repository.split(',')]
 
-	if args.clone:
-		ssh = args.ssh
-		clone = clone_repository(source_root, source_repo, source_credentials, destination_root, destination_repo, destination_credentials, ssh)
-		if not clone:
-			sys.stderr.write('ERROR: Failed to clone the repository. Exiting...')
-			quit()
+	if (len(source_repos) != len(destination_repos)):
+		sys.stderr.write('Number of source repositories and destination repositories are not matched.\n')
+		exit(1)
 
-	if args.githubData:
-		milestone_map = None
-		milestones = download_milestones(source_root, source_repo, source_credentials)
-		if milestones:
-			milestone_map = create_milestones(milestones, destination_root, destination_repo, destination_credentials)
-		elif milestones == False:
-			sys.stderr.write('ERROR: Milestones failed to be retrieved. Exiting...')
-			quit()
-		else:
-			print "No milestones found. None migrated"
-		
-		labels = download_labels(source_root, source_repo, source_credentials)
-		if labels:
-			res = create_labels(labels, destination_root, destination_repo, destination_credentials)
-		elif labels == False:
-			sys.stderr.write('ERROR: Labels failed to be retrieved. Exiting...')
-			quit()
-		else:
-			print "No Labels found. None migrated"
-		
-		issues = download_issues(source_root, source_repo, source_credentials)
-		if issues:
-			sameInstall = False
-			if (args.sourceHost == args.destinationHost):
-				sameInstall = True
-			res = create_issues(issues, destination_root, destination_repo, args.milestones, args.labels, milestone_map, destination_credentials, sameInstall)
-		elif issues == False:
-			sys.stderr.write('ERROR: Issues failed to be retrieved. Exiting...')
-			quit()
-		else:
-			print "No Issues found. None migrated"
+	for index in range(len(source_repos)):
+		source_repo = source_repos[index]
+		destination_repo = destination_repos[index]
+		if (len(args.sourceOwner)> 0):
+			source_repo = args.sourceOwner + '/' + source_repos[index]
+			destination_repo = args.destinationOwner + '/' + destination_repos[index]
+
+		if args.repo:
+			repo = download_repository(source_root, source_repo, source_credentials)
+			args.clone = True
+			args.githubData = True
+			if repo:
+				res = create_repository(repo, destination_root, destination_repo, destination_credentials, args.inheritVisibility)
+			else:
+				sys.stderr.write('ERROR: The source repository failed to be retrieved. Exiting...')
+				exit(2)
+
+		if args.clone:
+			ssh = args.ssh
+			clone = clone_repository(source_root, source_repo, source_credentials, destination_root, destination_repo, destination_credentials, ssh)
+			if not clone:
+				sys.stderr.write('ERROR: Failed to clone the repository. Exiting...')
+				exit(2)
+
+		if args.githubData:
+			milestone_map = None
+			milestones = download_milestones(source_root, source_repo, source_credentials)
+			if milestones:
+				milestone_map = create_milestones(milestones, destination_root, destination_repo, destination_credentials)
+			elif milestones == False:
+				sys.stderr.write('ERROR: Milestones failed to be retrieved. Exiting...')
+				exit(2)
+			else:
+				print "No milestones found. None migrated"
+			
+			labels = download_labels(source_root, source_repo, source_credentials)
+			if labels:
+				res = create_labels(labels, destination_root, destination_repo, destination_credentials)
+			elif labels == False:
+				sys.stderr.write('ERROR: Labels failed to be retrieved. Exiting...')
+				exit(2)
+			else:
+				print "No Labels found. None migrated"
+			
+			issues = download_issues(source_root, source_repo, source_credentials)
+			if issues:
+				sameInstall = False
+				if (args.sourceHost == args.destinationHost):
+					sameInstall = True
+				res = create_issues(issues, destination_root, destination_repo, milestone_map, destination_credentials, sameInstall)
+			elif issues == False:
+				sys.stderr.write('ERROR: Issues failed to be retrieved. Exiting...')
+				exit(2)
+			else:
+				print "No Issues found. None migrated"
 
 if __name__ == "__main__":
 	main()
