@@ -38,6 +38,19 @@ def post_req(url, data, credentials):
 	r = requests.post(url=url, data=data, auth=(credentials['user_name'], credentials['token']), headers={'Content-type': 'application/json', 'Accept': 'application/vnd.github.v3.html+json'})
 	return r
 
+def patch_req(url, data, token):
+	r = requests.patch(url=url, data=data, headers={'Content-type': 'application/json', 'Accept': 'application/vnd.github.v3.html+json', 'Authorization': 'Token '+token})
+	return r
+
+
+def update_repository(source_url, source, token, updated_repo):
+	url = source_url+'repos/'+source
+	r = patch_req(url, updated_repo, token)
+	status = check_res(r)
+	if status:
+		return json.loads(r.text)
+	return False
+
 '''
 INPUT:
 	source_url: the root url for the GitHub API
@@ -107,6 +120,7 @@ OUTCOME: Post new repository to GitHub
 OUTPUT: A dict of new repository information
 '''
 def create_repository(repo, destination_url, destination, credentials, inheritVisibility):
+	print 'Create repository ' + destination
 	destinations = destination.split('/')
 	url = destination_url+"orgs/"+destinations[0]+"/repos"
 	privateRepo = True if not inheritVisibility else repo['private']
@@ -131,6 +145,7 @@ OUTCOME: Post new repository to GitHub
 OUTPUT: A dict of new repository information
 '''
 def clone_repository(source_root, source_repo, source_credentials, destination_root, destination_repo, destination_credentials, ssh):
+	print 'Clone repository ' + source_repo
 	github_api_host = 'api.github.com'
 	source = urlparse(source_root)
 	source_host = 'github.com' if source.netloc.lower() == github_api_host else source.netloc[::-1].replace(ghe_api_path[::-1], '' , 1)[::-1]
@@ -258,6 +273,7 @@ def main():
 	parser.add_argument('destination_repo', type=str, help='the owner and repo to migrate to: <owner>/<repo_name>')
 
 	parser.add_argument('--repo', '-r', action="store_true", help='Creates new private repository on destination GitHub and clones git commits/branches/tags to the destination. It requires username and token for source and destination.')
+	parser.add_argument('--archiveToken', '-ar', nargs='?', default='', type=str, action='store', dest='archiveToken', help='GitHub Enterprise API Token to archive source repository')
 	parser.add_argument('--githubData', '-gd', action="store_true", help='Migrates GitHub data (Milestones/Labels/Issues). It requires username and token for source and destination.')
 	parser.add_argument('--clone', '-c', action="store_true", help='Clones source repository commits/branchs/tags to the destination. It requires username and token for source and destination unless ssh connection (-s) option.')
 
@@ -274,9 +290,6 @@ def main():
 
 	parser.add_argument('--sourceOwner', '-so', nargs='?', default='', type=str, action='store', dest='sourceOwner', help='The GitHub host to migrate from. Default is '+ghe_url+'.')
 	parser.add_argument('--destinationOwner', '-do', nargs='?', default='freshbooks', type=str, action='store', dest='destinationOwner', help='The GitHub host to migrate from. Default is freshbooks.')
-
-	parser.add_argument('--jenkinsHost', '-j', nargs='?', default='', type=str, action='store', dest='jenkinsHost', help='Host of Jenkins to update build job')
-
 
 	args = parser.parse_args()
 
@@ -330,18 +343,25 @@ def main():
 		exit(1)
 
 	for index in range(len(source_repos)):
+		
 		source_repo = source_repos[index]
 		destination_repo = destination_repos[index]
 		if (len(args.sourceOwner)> 0):
 			source_repo = args.sourceOwner + '/' + source_repos[index]
 			destination_repo = args.destinationOwner + '/' + destination_repos[index]
 
+		print "MOVE REPOSITORY " + source_repo
 		if args.repo:
 			repo = download_repository(source_root, source_repo, source_credentials)
 			args.clone = True
 			args.githubData = True
 			if repo:
 				res = create_repository(repo, destination_root, destination_repo, destination_credentials, args.inheritVisibility)
+				if args.archiveToken:
+					destinationPath = github_url + '/' + destination_repo
+					description = 'Disabled: Repository moved to ' + destinationPath + ' :: ' + repo['description']
+					updated_repo = '{"name":"' + repo['name'] + '", "archived":true,"description": "' + description + '"}'
+					update_repository(source_root, source_repo, args.archiveToken, updated_repo)
 			else:
 				sys.stderr.write('ERROR: The source repository failed to be retrieved. Exiting...')
 				exit(2)
