@@ -186,7 +186,6 @@ def create_milestones(milestones, destination_url, destination, credentials):
 	for milestone in milestones:
 		#create a new milestone that includes only the attributes needed to create a new milestone
 		milestone_prime = {"title": milestone["title"], "state": milestone["state"], "description": milestone["description"], "due_on": milestone["due_on"]}
-		print 'Create Milestones: ' + url
 		print 'Create Milestones: json ' + json.dumps(milestone_prime)
 		r = post_req(url, json.dumps(milestone_prime), credentials)
 		status = check_res(r)
@@ -208,10 +207,10 @@ OUTCOME: Post labels to GitHub
 OUTPUT: Null
 '''
 def create_labels(labels, destination_url, destination, credentials):
-	url = destination_url+"repos/"+destination+"/labels?filter=all"
+	url = destination_url+"repos/"+destination+"/labels"
 	#download labels from the destination and pass them into dictionary of label names
 	check_labels = download_labels(destination_url, destination, credentials)
-	existing_labels = {}
+	existing_labels = {'bug':None, 'duplicate':None, 'enhancement':None, 'help wanted':None, 'invalid':None, 'question':None, 'wontfix':None}
 	if check_labels:
 		for existing_label in check_labels:
 			existing_labels[existing_label["name"]] = existing_label
@@ -220,7 +219,8 @@ def create_labels(labels, destination_url, destination, credentials):
 		#If it does, don't add it.
 		if label["name"] not in existing_labels:
 			label_prime = {"name": label["name"], "color": label["color"]}
-			print 'Create labels: ' + url
+			if 'description' in label:
+				label_prime['description'] = label['description']
 			print 'Create labels: json ' + json.dumps(label_prime)
 			r = post_req(url, json.dumps(label_prime), credentials)
 			status = check_res(r)
@@ -252,7 +252,6 @@ def create_issues(issues, destination_url, destination, milestone_map, credentia
 		#if labels were migrated and the issue to be migrated contains labels
 		if "labels" in issue:
 			issue_prime["labels"] = issue["labels"]
-		print 'Create issue: ' + url
 		print 'Create issue: json ' + json.dumps(issue_prime)
 		r = post_req(url, json.dumps(issue_prime), credentials)
 		status = check_res(r)
