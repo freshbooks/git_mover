@@ -358,6 +358,8 @@ def main():
 				res = create_repository(repo, destination_root, destination_repo, destination_credentials, args.inheritVisibility)
 				if args.archiveToken:
 					destinationPath = github_url + '/' + destination_repo
+					print destinationPath
+					print repo.get('description', '')
 					description = 'Disabled: Repository moved to ' + destinationPath + ' :: ' + repo.get('description', '')
 					updated_repo = '{"name":"' + repo['name'] + '", "archived":true,"description": "' + description + '"}'
 					update_repository(source_root, source_repo, args.archiveToken, updated_repo)
