@@ -355,11 +355,14 @@ def main():
 			args.clone = True
 			args.githubData = True
 			if repo:
+				if not 'description' in repo or repo['description'] is None:
+					repo['description'] = ''
+				if not 'homepage' in repo or repo['homepage'] is None:
+					repo['homepage'] = ''
 				res = create_repository(repo, destination_root, destination_repo, destination_credentials, args.inheritVisibility)
 				if args.archiveToken:
 					destinationPath = github_url + '/' + destination_repo
-					old_repo_description = repo['description'] if repo['description'] else ''
-					description = 'Disabled: Repository moved to ' + destinationPath + ' :: ' + old_repo_description
+					description = 'Disabled: Repository moved to ' + destinationPath + ' :: ' + repo['description']
 					updated_repo = '{"name":"' + repo['name'] + '", "archived":true,"description": "' + description + '"}'
 					update_repository(source_root, source_repo, args.archiveToken, updated_repo)
 			else:
